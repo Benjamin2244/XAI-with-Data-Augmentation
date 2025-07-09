@@ -6,8 +6,8 @@ from sklearn.model_selection import train_test_split
 
 
 def load_dataset(file_location):
-    dataset_folder, dataset_imbalanced_file_name = file_location
-    df = read_csv_file(dataset_folder, dataset_imbalanced_file_name)
+    dataset_folder, dataset_file_name = file_location
+    df = read_csv_file(dataset_folder, dataset_file_name)
     return df
 
 def split_data(df, target_column, test_size=0.2):
@@ -15,8 +15,11 @@ def split_data(df, target_column, test_size=0.2):
     y = df[target_column]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=24)
 
+    X_train = X_train.astype(float)
     X_train = torch.tensor(X_train.values, dtype=torch.float32)
     y_train = torch.tensor(y_train.values, dtype=torch.long)
+
+    X_test = X_test.astype(float)
     X_test = torch.tensor(X_test.values, dtype=torch.float32)
     y_test = torch.tensor(y_test.values, dtype=torch.long)
 
@@ -77,6 +80,7 @@ def create_model(file_location, target_column):
     # Parameter tuning
     # Train a model on the dataset
     num_features = X_train.shape[1]
-    num_classes = len(y_train.unique())
+    # num_classes = len(y_train.unique())
+    num_classes = len(torch.unique(y_train))
     trained_model = train_model(X_train, y_train, num_features, num_classes)
     return trained_model, (X_test, y_test)
