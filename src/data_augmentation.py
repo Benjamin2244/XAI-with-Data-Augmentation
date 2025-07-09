@@ -19,14 +19,10 @@ def save_balanced_dataset(df, dataset_folder, dataset_new_file):
     parent_dir = get_parent_directory()
     output_file = parent_dir / 'data' / dataset_folder / dataset_new_file
     df.to_csv(output_file, index=False)
-    print(f"Dataset saved to {output_file}")
 
 
 # Run data augmentation
 def create_data_augmentation(dataset_folder, dataset_imbalanced_file_name, target_column):
-    print("============= Running data augmentation =============")
-    print(f"Dataset folder: {dataset_folder}")
-    print(f"Dataset imbalanced file: {dataset_imbalanced_file_name}")
     df = read_csv_file(dataset_folder, dataset_imbalanced_file_name)
     df_smote = apply_smote(df, target_column)
     new_file_name = dataset_imbalanced_file_name.replace(".csv", "_with_smote.csv")
