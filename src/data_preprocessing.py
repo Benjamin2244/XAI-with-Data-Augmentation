@@ -1,20 +1,6 @@
-from pathlib import Path
+from .utils import get_parent_directory, read_csv_file
 import pandas as pd
 
-import pandas as pd
-
-# Get parent directory of the current file
-def get_parent_directory():
-    parent_dir = Path(__file__).parent
-    return parent_dir.parent
-
-# Read the CSV file
-def read_csv_file(dataset_folder, dataset_original_file):
-    parent_dir = get_parent_directory()
-    csv_file = parent_dir / 'data' / dataset_folder / dataset_original_file
-    if not csv_file.exists():
-        raise FileNotFoundError(f"File {csv_file} does not exist.")
-    return pd.read_csv(csv_file)
 
 # Create an imbalance in the dataset
 def create_imbalance(df, target_column, minority_class, imbalance_ratio=0.1):
@@ -43,6 +29,11 @@ def create_imbalance(df, target_column, minority_class, imbalance_ratio=0.1):
 
     return imbalanced_df
 
+# Convert categorical columns to category type
+def convert_categorical_columns(df_imbalance, categorical_columns):
+    df_encoded = pd.get_dummies(df_imbalance, columns=categorical_columns)
+    return df_encoded
+
 # Save the dataset
 def save_dataset(df, dataset_folder, dataset_new_file):
     parent_dir = get_parent_directory()
@@ -51,17 +42,13 @@ def save_dataset(df, dataset_folder, dataset_new_file):
     print(f"Dataset saved to {output_file}")
 
 # Create the imbalance datasets
-def create_imbalance_datasets(dataset_folder, dataset_original_file, target_column, minority_class, imbalance_ratios):
+def create_imbalance_datasets(dataset_folder, dataset_original_file, target_column, minority_class, imbalance_ratios, categorical_columns):
     df = read_csv_file(dataset_folder, dataset_original_file)
+    imbalanced_file_location = []
     for imbalance_ratio in imbalance_ratios:
         df_imbalance = create_imbalance(df, target_column, minority_class, imbalance_ratio)
-        save_dataset(df_imbalance, dataset_folder, f"imbalanced_{imbalance_ratio}_{dataset_original_file}")
-
-if __name__ == "__main__":
-    create_imbalance_datasets(
-        dataset_folder='heart_failure_prediction',
-        dataset_original_file='heart.csv',
-        target_column='HeartDisease',
-        minority_class=1,
-        imbalance_ratios=[0.1, 0.5, 1.0]
-    )
+        df_imbalance = convert_categorical_columns(df_imbalance, categorical_columns)
+        new_file_name = f"imbalanced_{imbalance_ratio}_{dataset_original_file}"
+        save_dataset(df_imbalance, dataset_folder, new_file_name)
+        imbalanced_file_location.append((dataset_folder, new_file_name))
+    return imbalanced_file_location
