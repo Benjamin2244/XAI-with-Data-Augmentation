@@ -1,8 +1,12 @@
 from .utils import read_csv_file
+from .evaluation import get_f1
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
+import optuna
+import functools
+
 
 
 def load_dataset(file_location):
@@ -39,21 +43,51 @@ class NeuralNetwork(nn.Module):
     def forward(self, x):
         return self.net(x)
     
-def train_model(X, y, num_features, num_classes, batch_size=32):
+# Hyperparameter tuning with Optuna
+def objective(trial, X_train, y_train, X_test, y_test, num_features, num_classes):
+    lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
+    batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
+
+    model = train_model(
+        X_train, y_train,
+        num_features, num_classes,
+        lr=lr, batch_size=batch_size,
+        num_epochs=32
+    )
+
+    f1 = get_f1(model, (X_test, y_test))
+    return f1
+
+# Hyperparameter tuning with Optuna
+def hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, num_classes):
+    partial_objective = functools.partial(
+        objective, 
+        X_train=X_train, 
+        y_train=y_train, 
+        X_test=X_test, 
+        y_test=y_test, 
+        num_features=num_features, 
+        num_classes=num_classes
+    )
+
+    study = optuna.create_study(direction='maximize')
+    study.optimize(partial_objective, n_trials=100)
+
+    return study.best_params
+
+def train_model(X, y, num_features, num_classes, lr, batch_size, num_epochs):
     model = NeuralNetwork(num_features, num_classes)
     model.train()  # Set the model to training mode
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     training_data = TensorDataset(X, y)
     generator = torch.Generator().manual_seed(24)
     training_loader = DataLoader(training_data, batch_size=batch_size, shuffle=True, generator=generator)
+    
     # Training loop
-
-
     # Process one batch at a time, over multiple epochs
-    num_epochs = 32
     for epoch in range(num_epochs):
         epoch_loss = 0
         for batch_X, batch_y in training_loader:  
@@ -73,15 +107,18 @@ def train_model(X, y, num_features, num_classes, batch_size=32):
     return model
 
 def create_model(file_location, target_column):
-    # Load dataset
-    df = load_dataset(file_location)
-    # Split data
-    X_train, X_test, y_train, y_test = split_data(df, target_column)
-    # Parameter tuning
-    # TODO
-    # Train a model on the dataset
-    num_features = X_train.shape[1]
-    # num_classes = len(y_train.unique())
+    df = load_dataset(file_location) # Load dataset
+    X_train, X_test, y_train, y_test = split_data(df, target_column) # Split data
+    num_features = X_train.shape[1] # Train a model on the dataset
     num_classes = len(torch.unique(y_train))
-    trained_model = train_model(X_train, y_train, num_features, num_classes)
+
+    parameters = hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, num_classes) # Parameter tuning
+
+    trained_model = train_model(
+        X_train, y_train, 
+        num_features, num_classes,
+        lr=parameters['lr'],
+        batch_size=parameters['batch_size'],
+        num_epochs=32)
+    
     return trained_model, (X_train, y_train), (X_test, y_test)
