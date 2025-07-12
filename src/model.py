@@ -78,9 +78,10 @@ def create_model(file_location, target_column):
     # Split data
     X_train, X_test, y_train, y_test = split_data(df, target_column)
     # Parameter tuning
+    # TODO
     # Train a model on the dataset
     num_features = X_train.shape[1]
     # num_classes = len(y_train.unique())
     num_classes = len(torch.unique(y_train))
     trained_model = train_model(X_train, y_train, num_features, num_classes)
-    return trained_model, (X_test, y_test)
+    return trained_model, (X_train, y_train), (X_test, y_test)

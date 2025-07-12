@@ -32,19 +32,18 @@ if __name__ == "__main__":
         da_file_locations = run_data_augmentation(imbalanced_file_locations, dataset['target_column'])
 
         print(f"Training models for dataset: {dataset['dataset_folder']}")
-        model, testing_data = run_model((dataset['dataset_folder'], encoded_file_name), dataset['target_column'])
-        models[encoded_file_name] = {'model': model, 'testing_data': testing_data}
+        model, training_data, testing_data = run_model((dataset['dataset_folder'], encoded_file_name), dataset['target_column'])
+        models[encoded_file_name] = {'model': model, 'training_data':training_data, 'testing_data': testing_data}
 
         da_models = run_models(da_file_locations, dataset['target_column'])
         for da_model in da_models:
-            file_location, model, testing_data = da_model
+            file_location, model, training_data, testing_data = da_model
             print(f"Training model for augmented data: {file_location}")
-            models[file_location] = {'model': model, 'testing_data': testing_data}
+            models[file_location] = {'model': model, 'training_data':training_data, 'testing_data': testing_data}
 
-        print(f"Evaluating F1 score for dataset: {dataset['dataset_folder']}")
+        print(f"Evaluating dataset: {dataset['dataset_folder']}")
         all_analysis(models)
         # F-1 score
-        
         # SHAP comparisons
     print("All experiments completed.")
 
