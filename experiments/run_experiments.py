@@ -5,6 +5,8 @@ from .run_analysis import all_analysis
 import random
 import numpy as np
 import torch
+import time
+
 
 def set_seed(seed=24):
     random.seed(seed)
@@ -12,17 +14,7 @@ def set_seed(seed=24):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
-if __name__ == "__main__":
-    set_seed(24)
-    heart_failure_data = {
-        'dataset_folder': 'heart_failure_prediction',
-        'dataset_original_file': 'heart.csv',
-        'target_column': 'HeartDisease',
-        'minority_class': 1,
-        'imbalance_ratios': [0.1, 0.5, 1.0],
-        'categorical_columns': ['Sex', 'ChestPainType', 'RestingECG', 'ExerciseAngina', 'ST_Slope'],
-    }
-    datasets = [heart_failure_data]
+def run_experiments_full(datasets):
     for dataset in datasets:
         models = {}
         print(f"Runnning preprocessing for dataset: {dataset['dataset_folder']}")
@@ -30,6 +22,8 @@ if __name__ == "__main__":
 
         print(f"Running data augmentation for dataset: {dataset['dataset_folder']}")
         da_file_locations = run_data_augmentation(imbalanced_file_locations, dataset['target_column'])
+
+        continue
 
         print(f"Training models for dataset: {dataset['dataset_folder']}")
         model, training_data, testing_data = run_model((dataset['dataset_folder'], encoded_file_name), dataset['target_column'])
@@ -47,3 +41,22 @@ if __name__ == "__main__":
         # SHAP comparisons
     print("All experiments completed.")
 
+if __name__ == "__main__":
+    set_seed(24)
+    heart_failure_data = {
+        'dataset_folder': 'heart_failure_prediction',
+        'dataset_original_file': 'heart.csv',
+        'target_column': 'HeartDisease',
+        'minority_class': 1,
+        'imbalance_ratios': [0.1, 0.5, 1.0],
+        'categorical_columns': ['Sex', 'ChestPainType', 'RestingECG', 'ExerciseAngina', 'ST_Slope'],
+    }
+    datasets = [heart_failure_data]
+
+    print("Starting experiments...")
+    start_time = time.time()
+
+    run_experiments_full(datasets)
+
+    end_time = time.time()
+    print(f"Experiments completed in {end_time - start_time:.2f} seconds.")

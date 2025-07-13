@@ -1,4 +1,4 @@
-from .utils import read_csv_file
+from .utils import read_csv_file, print_progress_dot_optuna
 from .evaluation import get_f1
 import torch
 import torch.nn as nn
@@ -45,7 +45,7 @@ class NeuralNetwork(nn.Module):
     
 # Hyperparameter tuning with Optuna
 def objective(trial, X_train, y_train, X_test, y_test, num_features, num_classes):
-    lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
+    lr = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
     batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
 
     model = train_model(
@@ -70,8 +70,9 @@ def hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, 
         num_classes=num_classes
     )
 
+    optuna.logging.set_verbosity(optuna.logging.WARNING)  # Stops default logging
     study = optuna.create_study(direction='maximize')
-    study.optimize(partial_objective, n_trials=100)
+    study.optimize(partial_objective, n_trials=100, callbacks=[print_progress_dot_optuna])
 
     return study.best_params
 
@@ -99,9 +100,9 @@ def train_model(X, y, num_features, num_classes, lr, batch_size, num_epochs):
             optimizer.step()
         
         # Print average loss every 10 epochs
-        if (epoch+1) % 10 == 0:
-            average_loss = epoch_loss / len(training_loader)
-            print(f'Epoch = {epoch+1} : Average Loss = {average_loss:.3f}')
+        # if (epoch+1) % 10 == 0:
+        #     average_loss = epoch_loss / len(training_loader)
+        #     print(f'Epoch = {epoch+1} : Average Loss = {average_loss:.3f}')
 
     model.eval()  # Set the model to evaluation mode
     return model

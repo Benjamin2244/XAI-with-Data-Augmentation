@@ -1,4 +1,4 @@
-from .utils import get_parent_directory, read_csv_file
+from .utils import get_parent_directory, read_csv_file, file_exists, get_file_path, get_pre_data_augmentation_folder_name
 import pandas as pd
 
 
@@ -37,13 +37,13 @@ def convert_categorical_columns(df_imbalance, categorical_columns):
 # Save the dataset
 def save_dataset(df, dataset_folder, dataset_new_file):
     parent_dir = get_parent_directory()
-    output_file = parent_dir / 'data' / dataset_folder / dataset_new_file
+    output_file = parent_dir / 'data' / dataset_folder / get_pre_data_augmentation_folder_name() / dataset_new_file
     df.to_csv(output_file, index=False)
     print(f"Dataset saved to {output_file}")
 
 # Create the imbalance datasets
 def create_imbalance_datasets(dataset_folder, dataset_original_file, target_column, minority_class, imbalance_ratios, categorical_columns):
-    df = read_csv_file(dataset_folder, dataset_original_file)
+    df = read_csv_file(dataset_folder, get_pre_data_augmentation_folder_name(), dataset_original_file)
     imbalanced_file_locations = []
     for imbalance_ratio in imbalance_ratios:
         df_imbalance = create_imbalance(df, target_column, minority_class, imbalance_ratio)
@@ -56,8 +56,14 @@ def create_imbalance_datasets(dataset_folder, dataset_original_file, target_colu
 
 # Convert the original dataset categorical columns 
 def convert_original_dataset(dataset_folder, dataset_original_file, categorical_columns):
+    new_file_name = f"encoded_{dataset_original_file}"
+
+    file_path = get_file_path('data', dataset_folder, new_file_name)
+    if file_exists(file_path):
+        print(f"File {new_file_name} already exists. Skipping conversion.")
+        return dataset_folder, new_file_name
+
     df = read_csv_file(dataset_folder, dataset_original_file)
     df_encoded = convert_categorical_columns(df, categorical_columns)
-    new_file_name = f"encoded_{dataset_original_file}"
     save_dataset(df_encoded, dataset_folder, new_file_name)
     return dataset_folder, new_file_name
