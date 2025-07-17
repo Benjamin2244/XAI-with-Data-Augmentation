@@ -13,9 +13,9 @@ def get_files_in_directory(directory):
     return [file for file in dir_path.iterdir() if file.is_file()]
 
 # Get file path
-def get_file_path(folder_purpose, folder, file_name):
+def get_file_path(*path_parts):
     parent_dir = get_parent_directory()
-    return parent_dir / folder_purpose / folder / file_name
+    return parent_dir / 'data' / Path(*path_parts)
 
 # Get parent directory of the current file
 def get_parent_directory():

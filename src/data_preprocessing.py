@@ -46,11 +46,17 @@ def create_imbalance_datasets(dataset_folder, dataset_original_file, target_colu
     df = read_csv_file(dataset_folder, get_pre_data_augmentation_folder_name(), dataset_original_file)
     imbalanced_file_locations = []
     for imbalance_ratio in imbalance_ratios:
-        df_imbalance = create_imbalance(df, target_column, minority_class, imbalance_ratio)
         if dataset_original_file.startswith("encoded_"):
             dataset_original_file = dataset_original_file.replace("encoded_", "")
         new_file_name = f"imbalanced_{imbalance_ratio}_{dataset_original_file}"
-        save_dataset(df_imbalance, dataset_folder, new_file_name)
+
+        file_path = get_file_path(dataset_folder, get_pre_data_augmentation_folder_name(), new_file_name)
+
+        if file_exists(file_path):
+            print(f"File {new_file_name} already exists. Skipping conversion.")
+        else:
+            df_imbalance = create_imbalance(df, target_column, minority_class, imbalance_ratio)
+            save_dataset(df_imbalance, dataset_folder, new_file_name)
         imbalanced_file_locations.append((dataset_folder, new_file_name))
     return imbalanced_file_locations
 
@@ -58,7 +64,8 @@ def create_imbalance_datasets(dataset_folder, dataset_original_file, target_colu
 def convert_original_dataset(dataset_folder, dataset_original_file, categorical_columns):
     new_file_name = f"encoded_{dataset_original_file}"
 
-    file_path = get_file_path('data', dataset_folder, new_file_name)
+    file_path = get_file_path(dataset_folder, get_pre_data_augmentation_folder_name(), new_file_name)
+
     if file_exists(file_path):
         print(f"File {new_file_name} already exists. Skipping conversion.")
         return dataset_folder, new_file_name
