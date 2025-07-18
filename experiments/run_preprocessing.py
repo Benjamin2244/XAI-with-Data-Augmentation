@@ -7,7 +7,8 @@ def run_preprocessing(dataset):
     folder_name, encoded_file_name = convert_original_dataset(
         dataset_folder=dataset['dataset_folder'],
         dataset_original_file=dataset['dataset_original_file'],
-        categorical_columns=dataset['categorical_columns']
+        categorical_columns=dataset['categorical_columns'],
+        target_column=dataset['target_column']
     )
 
     # Creates the imbalanced datasets

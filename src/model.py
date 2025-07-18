@@ -1,4 +1,4 @@
-from .utils import read_csv_file, print_progress_dot_optuna
+from .utils import read_csv_file, print_progress_dot_optuna, get_model_folder_name, get_parent_directory, get_pre_data_augmentation_folder_name, force_csv_extension, force_pt_extension, load_model, split_data, load_dataset, get_num_features, get_num_classes
 from .evaluation import get_f1
 import torch
 import torch.nn as nn
@@ -6,28 +6,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 import optuna
 import functools
-
-
-
-def load_dataset(file_location):
-    dataset_folder, dataset_file_name = file_location
-    df = read_csv_file(dataset_folder, dataset_file_name)
-    return df
-
-def split_data(df, target_column, test_size=0.2):
-    X = df.drop(columns=[target_column])
-    y = df[target_column]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=24)
-
-    X_train = X_train.astype(float)
-    X_train = torch.tensor(X_train.values, dtype=torch.float32)
-    y_train = torch.tensor(y_train.values, dtype=torch.long)
-
-    X_test = X_test.astype(float)
-    X_test = torch.tensor(X_test.values, dtype=torch.float32)
-    y_test = torch.tensor(y_test.values, dtype=torch.long)
-
-    return X_train, X_test, y_train, y_test
 
 class NeuralNetwork(nn.Module):
     def __init__(self, num_features, num_classes):
@@ -107,13 +85,27 @@ def train_model(X, y, num_features, num_classes, lr, batch_size, num_epochs):
     model.eval()  # Set the model to evaluation mode
     return model
 
-def create_model(file_location, target_column):
-    df = load_dataset(file_location) # Load dataset
-    X_train, X_test, y_train, y_test = split_data(df, target_column) # Split data
-    num_features = X_train.shape[1] # Train a model on the dataset
-    num_classes = len(torch.unique(y_train))
+def does_model_exist(file_location):
+    dataset_folder, dataset_name = file_location
+    parent_dir = get_parent_directory()
+    path = parent_dir / 'data' / dataset_folder / get_model_folder_name() / f"{dataset_name}"
+    if path.exists():
+        return True
+    return False
 
-    parameters = hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, num_classes) # Parameter tuning
+def save_model(model, file_location):
+    dataset_folder, dataset_name = file_location
+    parent_dir = get_parent_directory()
+    path = parent_dir / 'data' / dataset_folder / get_model_folder_name() / f"{dataset_name.removesuffix('.csv')}.pt"
+    torch.save(model.state_dict(), path)
+
+def create_model(file_location, target_column, dataset_type, da_subfolder):
+    df = load_dataset(file_location, dataset_type, da_subfolder) # Load dataset
+    X_train, X_val, y_train, y_val = split_data(df, target_column) # Split data
+    num_features = get_num_features(file_location, target_column, dataset_type, da_subfolder)
+    num_classes = get_num_classes(file_location, target_column, dataset_type, da_subfolder)
+
+    parameters = hyperparameter_optimisation(X_train, y_train, X_val, y_val, num_features, num_classes) # Parameter tuning
 
     trained_model = train_model(
         X_train, y_train, 
@@ -122,4 +114,6 @@ def create_model(file_location, target_column):
         batch_size=parameters['batch_size'],
         num_epochs=32)
     
-    return trained_model, (X_train, y_train), (X_test, y_test)
+    save_model(trained_model, file_location)
+
+    return trained_model

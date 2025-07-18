@@ -2,6 +2,7 @@ from .run_preprocessing import run_preprocessing
 from .run_data_augmentation import run_data_augmentation
 from .run_models import run_models, run_model
 from .run_analysis import all_analysis
+from src.utils import reset_folder, get_pre_data_augmentation_folder_name, get_data_augmentation_folder_name, delete_test_dataset, get_model_folder_name
 import random
 import numpy as np
 import torch
@@ -14,26 +15,37 @@ def set_seed(seed=24):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
+def reset_folders(datasets):
+    for dataset in datasets:
+        dataset_folder = dataset['dataset_folder']
+        reset_folder(dataset_folder, get_pre_data_augmentation_folder_name())
+        reset_folder(dataset_folder, get_data_augmentation_folder_name())
+        reset_folder(dataset_folder, get_model_folder_name())
+        delete_test_dataset(dataset_folder)
+        
 def run_experiments_full(datasets):
     for dataset in datasets:
+        # reset_folders(datasets) # Delete previous data
+        # continue
         models = {}
-        print(f"Runnning preprocessing for dataset: {dataset['dataset_folder']}")
+        dataset_folder = dataset['dataset_folder']
+        print(f"Runnning preprocessing for dataset: {dataset_folder}")
         encoded_file_name, imbalanced_file_locations = run_preprocessing(dataset)
 
-        print(f"Running data augmentation for dataset: {dataset['dataset_folder']}")
+        print(f"Running data augmentation for dataset: {dataset_folder}")
         da_file_locations = run_data_augmentation(imbalanced_file_locations, dataset['target_column'])
 
-        continue
-
-        print(f"Training models for dataset: {dataset['dataset_folder']}")
-        model, training_data, testing_data = run_model((dataset['dataset_folder'], encoded_file_name), dataset['target_column'])
-        models[encoded_file_name] = {'model': model, 'training_data':training_data, 'testing_data': testing_data}
-
-        da_models = run_models(da_file_locations, dataset['target_column'])
+        print(f"Training models for dataset: {dataset_folder}")
+        dataset_type, da_subfolder = 'pre', None
+        model = run_model((dataset_folder, encoded_file_name), dataset['target_column'], dataset_type, da_subfolder)
+        models[encoded_file_name] = {'dataset': dataset_folder, 'model': model, 'target_column': dataset['target_column']}
+    
+        dataset_type, da_subfolder = 'da', 'SMOTE'
+        da_models = run_models(da_file_locations, dataset['target_column'], dataset_type, da_subfolder)
         for da_model in da_models:
-            file_location, model, training_data, testing_data = da_model
+            file_location, model = da_model
             print(f"Training model for augmented data: {file_location}")
-            models[file_location] = {'model': model, 'training_data':training_data, 'testing_data': testing_data}
+            models[file_location] = {'dataset': dataset_folder, 'model': model, 'target_column': dataset['target_column']}
 
         print(f"Evaluating dataset: {dataset['dataset_folder']}")
         all_analysis(models)

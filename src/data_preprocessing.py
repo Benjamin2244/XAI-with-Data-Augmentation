@@ -1,5 +1,6 @@
 from .utils import get_parent_directory, read_csv_file, file_exists, get_file_path, get_pre_data_augmentation_folder_name
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 
 # Create an imbalance in the dataset
@@ -41,6 +42,12 @@ def save_dataset(df, dataset_folder, dataset_new_file):
     df.to_csv(output_file, index=False)
     print(f"Dataset saved to {output_file}")
 
+def save_test_dataset(df, dataset_folder, dataset_new_file):
+    parent_dir = get_parent_directory()
+    output_file = parent_dir / 'data' / dataset_folder / dataset_new_file
+    df.to_csv(output_file, index=False)
+    print(f"Test dataset saved to {output_file}")
+
 # Create the imbalance datasets
 def create_imbalance_datasets(dataset_folder, dataset_original_file, target_column, minority_class, imbalance_ratios, categorical_columns):
     df = read_csv_file(dataset_folder, get_pre_data_augmentation_folder_name(), dataset_original_file)
@@ -60,8 +67,12 @@ def create_imbalance_datasets(dataset_folder, dataset_original_file, target_colu
         imbalanced_file_locations.append((dataset_folder, new_file_name))
     return imbalanced_file_locations
 
+def df_train_test_split(df, target_column, test_size=0.2):
+    df_train, df_test = train_test_split(df, test_size=test_size, random_state=24, stratify=df[target_column])
+    return df_train, df_test
+
 # Convert the original dataset categorical columns 
-def convert_original_dataset(dataset_folder, dataset_original_file, categorical_columns):
+def convert_original_dataset(dataset_folder, dataset_original_file, categorical_columns, target_column):
     new_file_name = f"encoded_{dataset_original_file}"
 
     file_path = get_file_path(dataset_folder, get_pre_data_augmentation_folder_name(), new_file_name)
@@ -72,5 +83,9 @@ def convert_original_dataset(dataset_folder, dataset_original_file, categorical_
 
     df = read_csv_file(dataset_folder, dataset_original_file)
     df_encoded = convert_categorical_columns(df, categorical_columns)
-    save_dataset(df_encoded, dataset_folder, new_file_name)
+
+    training_df, testing_df= df_train_test_split(df_encoded, target_column)
+
+    save_dataset(training_df, dataset_folder, new_file_name)
+    save_test_dataset(testing_df, dataset_folder, f"test_{dataset_original_file}")
     return dataset_folder, new_file_name

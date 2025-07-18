@@ -1,11 +1,12 @@
 from sklearn.metrics import f1_score
 import torch
 import shap
+import torch.nn as nn
+
 
 
 def get_f1(model, testing_data):
     X_test, y_test = testing_data
-    model.eval()
     with torch.no_grad():
         outputs = model(X_test)
         _, predictions = torch.max(outputs, dim=1)
