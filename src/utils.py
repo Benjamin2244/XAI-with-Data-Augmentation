@@ -186,6 +186,25 @@ def load_model(file_location, target_column, dataset_type, da_subfolder):
     model.eval()
     return model
 
+def get_encoded_categorical_columns(dataset_folder, encoded_file_name):
+    df = load_dataset((dataset_folder, encoded_file_name), 'pre')
+    categorical_columns = []
+
+    for col in df.columns:
+        isBinary = True
+        isBool = True
+        for row in df[col]:
+            if (isBinary == False) and (isBool == False):
+                break 
+            if row not in {0, 1}:
+                isBinary = False
+            if row not in {True, False}:
+                isBool = False
+        if (isBinary or isBool):
+            categorical_columns.append(col)
+    return categorical_columns
+
+
 # Prints a progress dot
 def print_progress_dot():
     print('.', end='', flush=True)
@@ -202,6 +221,9 @@ def get_data_augmentation_folder_name():
 
 def get_SMOTE_folder_name():
     return 'SMOTE'
+
+def get_GAN_folder_name():
+    return 'GAN'
 
 def get_model_folder_name():
     return 'Models'

@@ -2,7 +2,7 @@ from .run_preprocessing import run_preprocessing
 from .run_data_augmentation import run_data_augmentation
 from .run_models import run_models, run_model
 from .run_analysis import all_analysis
-from src.utils import reset_folder, get_pre_data_augmentation_folder_name, get_data_augmentation_folder_name, delete_test_dataset, get_model_folder_name
+from src.utils import reset_folder, get_pre_data_augmentation_folder_name, get_data_augmentation_folder_name, delete_test_dataset, get_model_folder_name, get_encoded_categorical_columns
 import random
 import numpy as np
 import torch
@@ -28,20 +28,23 @@ def run_experiments_full(datasets):
         # reset_folders(datasets) # Delete previous data
         # continue
         models = {}
+
         dataset_folder = dataset['dataset_folder']
+
         print(f"Runnning preprocessing for dataset: {dataset_folder}")
         encoded_file_name, imbalanced_file_locations = run_preprocessing(dataset)
 
-        print(f"Running data augmentation for dataset: {dataset_folder}")
-        da_file_locations = run_data_augmentation(imbalanced_file_locations, dataset['target_column'])
+        dataset['encoded_categorical_columns'] = get_encoded_categorical_columns(dataset_folder, encoded_file_name)
 
+        print(f"Running data augmentation for dataset: {dataset_folder}")
+        da_file_locations = run_data_augmentation(imbalanced_file_locations, dataset['target_column'], dataset['minority_class'], dataset['encoded_categorical_columns']) 
+        
         print(f"Training models for dataset: {dataset_folder}")
         dataset_type, da_subfolder = 'pre', None
         model = run_model((dataset_folder, encoded_file_name), dataset['target_column'], dataset_type, da_subfolder)
         models[encoded_file_name] = {'dataset': dataset_folder, 'model': model, 'target_column': dataset['target_column']}
     
-        dataset_type, da_subfolder = 'da', 'SMOTE'
-        da_models = run_models(da_file_locations, dataset['target_column'], dataset_type, da_subfolder)
+        da_models = run_models(da_file_locations, dataset['target_column'])
         for da_model in da_models:
             file_location, model = da_model
             print(f"Training model for augmented data: {file_location}")
