@@ -132,6 +132,16 @@ class NeuralNetwork(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+    
+def predict(model, x):
+    model.eval()
+    with torch.no_grad():
+        if hasattr(x, "to_numpy"):
+            x = x.to_numpy()
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, dtype=torch.float32)
+        prediction = model(x)
+        return prediction.numpy()
 
 def split_data(df, target_column, test_size=0.2):
     X = df.drop(columns=[target_column])
@@ -203,7 +213,6 @@ def get_encoded_categorical_columns(dataset_folder, encoded_file_name):
         if (isBinary or isBool):
             categorical_columns.append(col)
     return categorical_columns
-
 
 # Prints a progress dot
 def print_progress_dot():
