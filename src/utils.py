@@ -94,6 +94,40 @@ def delete_test_dataset(dataset_folder):
                 print(f"Deleting file: {file}")
                 file.unlink()
 
+def is_control(name):
+    if name.startswith("encoded_"):
+        return True
+    return False
+
+def is_SMOTE(name):
+    if "_smote" in name:
+        return True
+    return False
+
+def is_GAN(name):
+    if "_GAN" in name:
+        return True
+    return False
+
+# Load columnn names
+def load_column_names(dataset_folder, target_column):
+    parent_dir = get_parent_directory()
+    folder_path = parent_dir / 'data' / dataset_folder
+
+    for file in folder_path.iterdir():
+        if file.is_file() and file.name.startswith('test_'):
+            test_file = file.name
+            break
+
+    if not test_file:
+        raise FileNotFoundError(f"No test file found in {dataset_folder}.")
+    
+    df = read_csv_file(dataset_folder, test_file)
+
+    feature_names = df.drop(columns=[target_column]).columns.tolist()
+
+    return feature_names
+
 # Load test dataset
 def load_test_data(dataset_folder, target_column):
     parent_dir = get_parent_directory()

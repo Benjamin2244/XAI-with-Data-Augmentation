@@ -42,13 +42,13 @@ def run_experiments_full(datasets):
         print(f"Training models for dataset: {dataset_folder}")
         dataset_type, da_subfolder = 'pre', None
         model = run_model((dataset_folder, encoded_file_name), dataset['target_column'], dataset_type, da_subfolder)
-        models[encoded_file_name] = {'dataset': dataset_folder, 'model': model, 'target_column': dataset['target_column']}
+        models[encoded_file_name] = {'dataset': dataset_folder, 'model': model, 'target_column': dataset['target_column'], 'minority_class': dataset['minority_class']}
     
         da_models = run_models(da_file_locations, dataset['target_column'])
         for da_model in da_models:
             file_location, model = da_model
             print(f"Training model for augmented data: {file_location}")
-            models[file_location] = {'dataset': dataset_folder, 'model': model, 'target_column': dataset['target_column']}
+            models[file_location] = {'dataset': dataset_folder, 'model': model, 'target_column': dataset['target_column'], 'minority_class': dataset['minority_class']}
 
         print(f"Evaluating dataset: {dataset['dataset_folder']}")
         all_analysis(models)
