@@ -23,17 +23,23 @@ def get_f1(model, testing_data):
     f1 = f1_score(y_true, y_prediction, average='macro')
     return f1
 
-def get_background(training_data):
-    X_train, y_train = training_data
-    background = X_train[:50]
+def get_background(X):
+    shuffled_X = X[torch.randperm(X.size(0))]
+    background = shuffled_X[:50]
     return background
 
-def shap_output(model, training_data, test_data):
-    background = get_background(training_data)
-    X_test, y_test = test_data
-    interpreter = shap.GradientExplainer(model, background)
-    shap_values = interpreter.shap_values(X_test)
-    shap.summary_plot(shap_values, X_test.cpu().numpy())
+# def get_background(training_data):
+#     X_train, y_train = training_data
+#     print(type(X_train))
+#     background = X_train[:50]
+#     return background
+
+# def shap_output(model, training_data, test_data):
+#     background = get_background(training_data)
+#     X_test, y_test = test_data
+#     interpreter = shap.GradientExplainer(model, background)
+#     shap_values = interpreter.shap_values(X_test)
+#     shap.summary_plot(shap_values, X_test.cpu().numpy())
 
 def create_DataFrame(data, feature_names):
     data = data.numpy()
@@ -41,6 +47,7 @@ def create_DataFrame(data, feature_names):
     return data
 
 def create_explainer(data, model):
+    model.eval()
     masker = shap.maskers.Independent(data)
     model_prediction = functools.partial(predict, model)
     explainer = shap.Explainer(model_prediction, masker)
@@ -85,19 +92,62 @@ def calculate_euclidean(differences):
     difference = np.linalg.norm(differences)
     return difference
 
+def get_colours(values):
+    values_copy = np.abs(values.copy())
+
+    first_most_different_index = 0
+    second_most_different_index = 0
+    third_most_different_index = 0
+
+    first_most_different_index = np.argmax(values_copy)
+    values_copy[first_most_different_index] = -np.inf
+    if len(values) >= 2:
+        second_most_different_index = np.argmax(values_copy)
+        values_copy[second_most_different_index] = -np.inf
+        if len(values) >= 3:
+            third_most_different_index = np.argmax(values_copy)
+
+    light_grey = '#A1A1A1'
+    dark_grey = '#525252'
+    highlight = "#406C19"
+
+    colours = [light_grey if i % 2 == 0 else dark_grey for i in range(len(values))]
+
+    for index in [first_most_different_index, second_most_different_index, third_most_different_index]:
+        colours[index] = highlight
+
+    return colours
+
 def display_feature_differences(differences, order, dataset, features):
     for (class_value, all_model_values) in differences:
-        print(class_value)
         for values, model in zip(all_model_values, order):
-            plt.bar(features, values)
+            colours = get_colours(values)
+
+            plt.bar(features, values, color=colours)
+
             plt.xlabel('Features')
+            plt.xticks(rotation='vertical')
+
             plt.ylabel('Difference from control')
+
             plt.title(f"Dataset: {dataset} with {model}, looking at class {class_value}")
             plt.show()
 
 
-def display_total_differences(differences, order, dataset, features):
-    pass
+def display_total_differences(differences, order, dataset, DA_method):
+    print(F"differences: {differences}")
+    for (class_value, model_differences) in differences:
+        colours = get_colours(model_differences)
+
+        plt.bar(order, model_differences, color=colours)
+
+        plt.xlabel('Models')
+        plt.xticks(rotation='vertical')
+
+        plt.ylabel('Difference from control')
+
+        plt.title(f"Dataset: {dataset} with {DA_method}, looking at class {class_value}")
+        plt.show()
 
 def compare_results(control, results):
     feature_differences = []
@@ -123,10 +173,13 @@ def compare_results(control, results):
 
 def shap_explainer(model, testing_data, target_column, minority_class, feature_names):
     X_test, y_test = testing_data
-    X_test = create_DataFrame(X_test, feature_names)
+    X_subset = get_background(X_test)
+    X_subset = create_DataFrame(X_subset, feature_names)
     class_options = sorted(set(y_test.numpy()))
-    explainer = create_explainer(X_test, model)
 
+    explainer = create_explainer(X_subset, model)
+
+    X_test = create_DataFrame(X_test, feature_names)
     shap_results = explainer(X_test)
     shap_results.feature_names = feature_names
 
@@ -135,13 +188,8 @@ def shap_explainer(model, testing_data, target_column, minority_class, feature_n
     return shap_values_dict
 
 
-    # TODO save the dict with in an new dict, with a new key, prob the model name
-    # TODO return the new dict so i can save it and then compare with others
-    # TODO have a utils func for euclidean distance?
-    # TODO compare the control with each other indiviuallly, using euclidean
-    # TODO print results in a seperate funct
-    # TODO have a graph showing each model and there difference from the original
     # TODO compare all models together? have in that weird box thing? sees smote vs gan
+    # TODO smaller background
 
     
 

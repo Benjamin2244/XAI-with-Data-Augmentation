@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 
@@ -167,6 +168,16 @@ class NeuralNetwork(nn.Module):
     def forward(self, x):
         return self.net(x)
     
+# def predict(model, x):
+#     model.eval()
+#     with torch.no_grad():
+#         if hasattr(x, "to_numpy"):
+#             x = x.to_numpy()
+#         if not isinstance(x, torch.Tensor):
+#             x = torch.tensor(x, dtype=torch.float32)
+#         prediction = model(x)
+#         return prediction.numpy()
+
 def predict(model, x):
     model.eval()
     with torch.no_grad():
@@ -175,6 +186,13 @@ def predict(model, x):
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, dtype=torch.float32)
         prediction = model(x)
+
+        if prediction.shape[1] == 1: # Checks if binary classification
+            positive_probability = torch.sigmoid(prediction)
+            probability = torch.cat([1 - positive_probability, positive_probability], dim=1)
+        else: 
+            probability = F.softmax(prediction, dim=1)
+
         return prediction.numpy()
 
 def split_data(df, target_column, test_size=0.2):

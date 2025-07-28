@@ -49,8 +49,9 @@ def hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, 
     )
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)  # Stops default logging
-    study = optuna.create_study(direction='maximize')
+    study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=24))
     study.optimize(partial_objective, n_trials=100, callbacks=[print_progress_dot_optuna])
+    print()
 
     return study.best_params
 

@@ -14,6 +14,8 @@ def set_seed(seed=24):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 def reset_folders(datasets):
     for dataset in datasets:
@@ -52,9 +54,6 @@ def run_experiments_full(datasets):
 
         print(f"Evaluating dataset: {dataset['dataset_folder']}")
         all_analysis(models)
-        # F-1 score
-        # SHAP comparisons
-    print("All experiments completed.")
 
 if __name__ == "__main__":
     set_seed(24)
