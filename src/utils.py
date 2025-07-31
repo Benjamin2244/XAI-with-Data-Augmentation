@@ -64,6 +64,16 @@ def create_folder(dataset_name, folder_name):
         folder_path.mkdir(parents=True, exist_ok=True) # Creates the folder
 
 # Creates folder
+def create_param_folder(dataset_name):
+    parent_dir = get_parent_directory()
+    folder_path = parent_dir / 'data' / dataset_name / get_model_folder_name() / get_param_details_name()
+    if folder_path.exists() and folder_path.is_dir():
+        pass # Folder exists
+    else:
+        folder_path.mkdir(parents=True, exist_ok=True) # Creates the folder
+    return folder_path
+
+# Creates folder
 def create_da_folder(dataset_name, da_type):
     parent_dir = get_parent_directory()
     folder_path = parent_dir / 'data' / dataset_name / get_data_augmentation_folder_name() / da_type
@@ -167,16 +177,6 @@ class NeuralNetwork(nn.Module):
 
     def forward(self, x):
         return self.net(x)
-    
-# def predict(model, x):
-#     model.eval()
-#     with torch.no_grad():
-#         if hasattr(x, "to_numpy"):
-#             x = x.to_numpy()
-#         if not isinstance(x, torch.Tensor):
-#             x = torch.tensor(x, dtype=torch.float32)
-#         prediction = model(x)
-#         return prediction.numpy()
 
 def predict(model, x):
     model.eval()
@@ -288,3 +288,9 @@ def get_GAN_folder_name():
 
 def get_model_folder_name():
     return 'Models'
+
+def get_param_details_name():
+    return 'Parameter Details'
+
+def get_results_folder_name():
+    return 'Results'

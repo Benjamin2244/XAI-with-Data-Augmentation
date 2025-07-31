@@ -1,12 +1,12 @@
 from src.evaluation import get_f1, shap_explainer, compare_results, display_feature_differences, display_total_differences
-from src.utils import load_test_data, load_column_names, is_control, is_SMOTE, is_GAN
+from src.utils import load_test_data, load_column_names, is_control, is_SMOTE, is_GAN, get_results_folder_name, create_folder
 
 def f1_score(model, testing_data):
     f1 = get_f1(model, testing_data)
     return f1
 
-def do_shap(model, testing_data, target_column, minority_class, feature_names):
-    values = shap_explainer(model, testing_data, target_column, minority_class, feature_names)
+def do_shap(model, testing_data, target_column, minority_class, feature_names, dataset_folder, data_name):
+    values = shap_explainer(model, testing_data, target_column, minority_class, feature_names, dataset_folder, data_name)
     return values
 
 def show_SHAP_differences(feature_differences, total_difference, order, dataset, feature_names, DA_method):
@@ -42,7 +42,9 @@ def analyse_shap(all_shap_results, all_feature_names):
         show_SHAP_differences(SMOTE_feature_differences, SMOTE_total_difference, SMOTE_order, dataset, feature_names, "SMOTE")
         show_SHAP_differences(GAN_feature_differences, GAN_total_difference, GAN_order, dataset, feature_names, "GAN")
 
-def all_analysis(models):
+def all_analysis(models, dataset_folder):
+    create_folder(dataset_folder, get_results_folder_name())
+
     all_shap_results = {}
     all_feature_names = {}
     for data_name in models:
@@ -62,7 +64,8 @@ def all_analysis(models):
         f1 = f1_score(model, testing_data)
         print(f"F1 Score for {data_name}: {f1:.4f}")
 
-        values = do_shap(model, testing_data, target_column, minority_class, feature_names)
+        values = do_shap(model, testing_data, target_column, minority_class, feature_names, dataset_folder, data_name)
+
         all_shap_results[dataset][data_name] = values
 
     analyse_shap(all_shap_results, all_feature_names)

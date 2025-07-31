@@ -28,5 +28,5 @@ def run_models(file_locations, target_column):
             print(f'ERROR, file {file_name} is not a recognised DA type')
             continue
         trained_model = run_model(file_location, target_column, dataset_type, da_subfolder)
-        trained_models.append((file_location[1], trained_model))    
+        trained_models.append((file_name, trained_model))    
     return trained_models

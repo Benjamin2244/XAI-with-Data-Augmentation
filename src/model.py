@@ -1,4 +1,4 @@
-from .utils import read_csv_file, print_progress_dot_optuna, get_model_folder_name, get_parent_directory, get_pre_data_augmentation_folder_name, force_csv_extension, force_pt_extension, load_model, split_data, load_dataset, get_num_features, get_num_classes
+from .utils import read_csv_file, print_progress_dot_optuna, get_model_folder_name, get_parent_directory, get_pre_data_augmentation_folder_name, force_csv_extension, force_pt_extension, load_model, split_data, load_dataset, get_num_features, get_num_classes, create_param_folder, print_progress_dot
 from .evaluation import get_f1
 import torch
 import torch.nn as nn
@@ -36,8 +36,27 @@ def objective(trial, X_train, y_train, X_test, y_test, num_features, num_classes
     f1 = get_f1(model, (X_test, y_test))
     return f1
 
+def does_trial_count_exist(path):
+    if path.exists():
+        return True
+    return False
+
+def create_trial_count(path):
+    with open(path, "w") as file:
+        file.write("0")
+
+def get_trial_count(path):
+    with open(path, "r") as file:
+        return int(file.read().strip())
+
+def update_trial_count(path, count):
+    with open(path, "w") as file:
+        file.write(str(count))
+
 # Hyperparameter tuning with Optuna
-def hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, num_classes):
+def hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, num_classes, save_progress, file_location):
+    dataset_folder, dataset_name = file_location
+
     partial_objective = functools.partial(
         objective, 
         X_train=X_train, 
@@ -49,8 +68,36 @@ def hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, 
     )
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)  # Stops default logging
-    study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=24))
-    study.optimize(partial_objective, n_trials=100, callbacks=[print_progress_dot_optuna])
+
+    if save_progress:
+        param_details_path = create_param_folder(dataset_folder)
+
+        trial_count_path = param_details_path / f"trial_count_for_{dataset_name}.txt"
+        if does_trial_count_exist(trial_count_path) == False:
+            create_trial_count(trial_count_path)
+        trial_count = get_trial_count(trial_count_path)
+
+        optuna_path = param_details_path / f"params_for_{dataset_name}.db"
+        optuna_path_URI = f"sqlite:///{optuna_path}"
+
+        study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=24), study_name=f"{dataset_name}_study", 
+                                        storage=optuna_path_URI, load_if_exists=True)
+        
+        for _ in range(trial_count):
+            print_progress_dot()
+
+        while trial_count < 25:
+            study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=24), study_name=f"{dataset_name}_study", 
+                                        storage=optuna_path_URI, load_if_exists=True)
+
+            study.optimize(partial_objective, n_trials=1, callbacks=[print_progress_dot_optuna])
+
+            trial_count += 1
+            update_trial_count(trial_count_path, trial_count)
+
+    else:
+        study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=24))
+        study.optimize(partial_objective, n_trials=100, callbacks=[print_progress_dot_optuna])
     print()
 
     return study.best_params
@@ -105,8 +152,11 @@ def create_model(file_location, target_column, dataset_type, da_subfolder):
     X_train, X_val, y_train, y_val = split_data(df, target_column) # Split data
     num_features = get_num_features(file_location, target_column, dataset_type, da_subfolder)
     num_classes = get_num_classes(file_location, target_column, dataset_type, da_subfolder)
+    save_progress = False
+    if len(df) >= 100000:
+        save_progress = True
 
-    parameters = hyperparameter_optimisation(X_train, y_train, X_val, y_val, num_features, num_classes) # Parameter tuning
+    parameters = hyperparameter_optimisation(X_train, y_train, X_val, y_val, num_features, num_classes, save_progress, file_location) # Parameter tuning
 
     trained_model = train_model(
         X_train, y_train, 

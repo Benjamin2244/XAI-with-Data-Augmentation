@@ -2,6 +2,41 @@ from .utils import get_parent_directory, read_csv_file, file_exists, get_file_pa
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+def df_train_test_split(df, target_column, test_size=0.2):
+    df_train, df_test = train_test_split(df, test_size=test_size, random_state=24, stratify=df[target_column])
+    return df_train, df_test
+
+def create_binary_classification(df, target_column, minority_class):
+    current_classes = df[target_column].unique().tolist()
+    if (current_classes == [0,1]) or (current_classes == [1,0]):
+        return df, 1
+    for i, row in df.iterrows():
+        if row[target_column] == minority_class:
+            df.at[i, target_column] = 1
+        else:
+            df.at[i, target_column] = 0
+    df[target_column] = df[target_column].astype(int)
+    return df, 1
+
+# Convert categorical columns to category type
+def convert_categorical_columns(df_imbalance, categorical_columns):
+    df_imbalance = df_imbalance.replace({'Yes': 1, 'No': 0})
+    df_imbalance = df_imbalance.infer_objects(copy=False)
+    df_encoded = pd.get_dummies(df_imbalance, columns=categorical_columns)
+    return df_encoded
+
+# Save the dataset
+def save_dataset(df, dataset_folder, dataset_new_file):
+    parent_dir = get_parent_directory()
+    output_file = parent_dir / 'data' / dataset_folder / get_pre_data_augmentation_folder_name() / dataset_new_file
+    df.to_csv(output_file, index=False)
+    print(f"Dataset saved to {output_file}")
+
+def save_test_dataset(df, dataset_folder, dataset_new_file):
+    parent_dir = get_parent_directory()
+    output_file = parent_dir / 'data' / dataset_folder / dataset_new_file
+    df.to_csv(output_file, index=False)
+    print(f"Test dataset saved to {output_file}")
 
 # Create an imbalance in the dataset
 def create_imbalance(df, target_column, minority_class, imbalance_ratio=0.1):
@@ -30,24 +65,6 @@ def create_imbalance(df, target_column, minority_class, imbalance_ratio=0.1):
 
     return imbalanced_df
 
-# Convert categorical columns to category type
-def convert_categorical_columns(df_imbalance, categorical_columns):
-    df_encoded = pd.get_dummies(df_imbalance, columns=categorical_columns)
-    return df_encoded
-
-# Save the dataset
-def save_dataset(df, dataset_folder, dataset_new_file):
-    parent_dir = get_parent_directory()
-    output_file = parent_dir / 'data' / dataset_folder / get_pre_data_augmentation_folder_name() / dataset_new_file
-    df.to_csv(output_file, index=False)
-    print(f"Dataset saved to {output_file}")
-
-def save_test_dataset(df, dataset_folder, dataset_new_file):
-    parent_dir = get_parent_directory()
-    output_file = parent_dir / 'data' / dataset_folder / dataset_new_file
-    df.to_csv(output_file, index=False)
-    print(f"Test dataset saved to {output_file}")
-
 # Create the imbalance datasets
 def create_imbalance_datasets(dataset_folder, dataset_original_file, target_column, minority_class, imbalance_ratios, categorical_columns):
     df = read_csv_file(dataset_folder, get_pre_data_augmentation_folder_name(), dataset_original_file)
@@ -67,25 +84,23 @@ def create_imbalance_datasets(dataset_folder, dataset_original_file, target_colu
         imbalanced_file_locations.append((dataset_folder, new_file_name))
     return imbalanced_file_locations
 
-def df_train_test_split(df, target_column, test_size=0.2):
-    df_train, df_test = train_test_split(df, test_size=test_size, random_state=24, stratify=df[target_column])
-    return df_train, df_test
-
 # Convert the original dataset categorical columns 
-def convert_original_dataset(dataset_folder, dataset_original_file, categorical_columns, target_column):
+def convert_original_dataset(dataset_folder, dataset_original_file, categorical_columns, target_column, minority_class):
     new_file_name = f"encoded_{dataset_original_file}"
+    minority_class_value = 1
 
     file_path = get_file_path(dataset_folder, get_pre_data_augmentation_folder_name(), new_file_name)
 
     if file_exists(file_path):
         print(f"File {new_file_name} already exists. Skipping conversion.")
-        return dataset_folder, new_file_name
+        return dataset_folder, new_file_name, minority_class_value
 
     df = read_csv_file(dataset_folder, dataset_original_file)
-    df_encoded = convert_categorical_columns(df, categorical_columns)
+    df_binary_classification, minority_class_value = create_binary_classification(df, target_column, minority_class)
+    df_encoded = convert_categorical_columns(df_binary_classification, categorical_columns)
 
     training_df, testing_df= df_train_test_split(df_encoded, target_column)
 
     save_dataset(training_df, dataset_folder, new_file_name)
     save_test_dataset(testing_df, dataset_folder, f"test_{dataset_original_file}")
-    return dataset_folder, new_file_name
+    return dataset_folder, new_file_name, minority_class_value

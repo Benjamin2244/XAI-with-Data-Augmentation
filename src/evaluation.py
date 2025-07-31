@@ -2,26 +2,28 @@ from sklearn.metrics import f1_score
 import torch
 import shap
 import torch.nn as nn
-from src.utils import predict
+from src.utils import predict, get_parent_directory, get_results_folder_name
 import functools
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import joblib
 
 
 
+def get_shap_results_path(file_location):
+    dataset_folder, dataset_name = file_location
+    parent_dir = get_parent_directory()
+    path = parent_dir / 'data' / dataset_folder / get_results_folder_name() / f"{dataset_name}"
+    return path
 
-def get_f1(model, testing_data):
-    X_test, y_test = testing_data
-    with torch.no_grad():
-        outputs = model(X_test)
-        _, predictions = torch.max(outputs, dim=1)
-
-    y_true = y_test.cpu().numpy()
-    y_prediction = predictions.cpu().numpy()
-
-    f1 = f1_score(y_true, y_prediction, average='macro')
-    return f1
+def does_shap_results_exist(file_location):
+    dataset_folder, dataset_name = file_location
+    parent_dir = get_parent_directory()
+    path = parent_dir / 'data' / dataset_folder / get_results_folder_name() / f"{dataset_name}"
+    if path.exists():
+        return True
+    return False
 
 def get_background(X):
     shuffled_X = X[torch.randperm(X.size(0))]
@@ -46,42 +48,6 @@ def create_DataFrame(data, feature_names):
     data = pd.DataFrame(data, columns=feature_names)
     return data
 
-def create_explainer(data, model):
-    model.eval()
-    masker = shap.maskers.Independent(data)
-    model_prediction = functools.partial(predict, model)
-    explainer = shap.Explainer(model_prediction, masker)
-    return explainer
-
-def show_shap_results(shap_results, feature_names, y_test, class_value):
-    class_options = sorted(set(y_test.numpy()))
-    class_index = class_options.index(class_value)
-
-    shap_values_for_class = shap_results.values[:, :, class_index]
-
-    shap_result_for_class = shap.Explanation(
-        shap_values_for_class,
-        base_values=shap_results.base_values[:, class_index],
-        data=shap_results.data,
-        feature_names=feature_names
-    )
-
-    shap.plots.bar(shap_result_for_class, max_display=len(feature_names))
-    shap.plots.beeswarm(shap_result_for_class, max_display=len(feature_names))
-
-def get_shap_scores(shap_results, class_options):
-    shap_values = shap_results.values
-
-    shap_values_dict = {}
-    importance_avg = np.abs(shap_values).mean(axis=0)
-    for index, class_value in enumerate(class_options):
-        values = []
-        for avg in importance_avg:
-            values.append(avg[index])
-        shap_values_dict[class_value] = values
-    
-    return shap_values_dict
-
 def calculate_feature_differences(result_A, result_B):
     A_np = np.array(result_A)
     B_np = np.array(result_B)
@@ -91,6 +57,27 @@ def calculate_feature_differences(result_A, result_B):
 def calculate_euclidean(differences):
     difference = np.linalg.norm(differences)
     return difference
+
+def compare_results(control, results):
+    feature_differences = []
+    total_differences = []
+
+    for class_option in control:
+        control_result = control[class_option]
+        class_feature_differences = []
+        class_total_differences = []
+
+        for result in results:
+            differences = calculate_feature_differences(control_result, result[class_option])
+            class_feature_differences.append(differences)
+
+            difference = calculate_euclidean(differences)
+            class_total_differences.append(difference)
+        
+        feature_differences.append((class_option, class_feature_differences))
+        total_differences.append((class_option, class_total_differences))
+
+    return feature_differences, total_differences
 
 def get_colours(values):
     values_copy = np.abs(values.copy())
@@ -149,48 +136,79 @@ def display_total_differences(differences, order, dataset, DA_method):
         plt.title(f"Dataset: {dataset} with {DA_method}, looking at class {class_value}")
         plt.show()
 
-def compare_results(control, results):
-    feature_differences = []
-    total_differences = []
+def show_shap_results(shap_results, feature_names, y_test, class_value):
+    class_options = sorted(set(y_test.numpy()))
+    class_index = class_options.index(class_value)
 
-    for class_option in control:
-        control_result = control[class_option]
-        class_feature_differences = []
-        class_total_differences = []
+    shap_values_for_class = shap_results.values[:, :, class_index]
 
-        for result in results:
-            differences = calculate_feature_differences(control_result, result[class_option])
-            class_feature_differences.append(differences)
+    shap_result_for_class = shap.Explanation(
+        shap_values_for_class,
+        base_values=shap_results.base_values[:, class_index],
+        data=shap_results.data,
+        feature_names=feature_names
+    )
 
-            difference = calculate_euclidean(differences)
-            class_total_differences.append(difference)
-        
-        feature_differences.append((class_option, class_feature_differences))
-        total_differences.append((class_option, class_total_differences))
+    shap.plots.bar(shap_result_for_class, max_display=len(feature_names))
+    shap.plots.beeswarm(shap_result_for_class, max_display=len(feature_names))
 
-    return feature_differences, total_differences
-            
+def create_explainer(data, model):
+    model.eval()
+    masker = shap.maskers.Independent(data)
+    model_prediction = functools.partial(predict, model)
+    explainer = shap.Explainer(model_prediction, masker)
+    return explainer
 
-def shap_explainer(model, testing_data, target_column, minority_class, feature_names):
+def get_shap_scores(shap_results, class_options):
+    shap_values = shap_results.values
+
+    shap_values_dict = {}
+    importance_avg = np.abs(shap_values).mean(axis=0)
+    for index, class_value in enumerate(class_options):
+        values = []
+        for avg in importance_avg:
+            values.append(avg[index])
+        shap_values_dict[class_value] = values
+    
+    return shap_values_dict
+
+def shap_explainer(model, testing_data, target_column, minority_class, feature_names, dataset_folder, data_name):
     X_test, y_test = testing_data
     X_subset = get_background(X_test)
     X_subset = create_DataFrame(X_subset, feature_names)
     class_options = sorted(set(y_test.numpy()))
 
-    explainer = create_explainer(X_subset, model)
+    results_file = f"{data_name.removesuffix('.csv')}.pk1"
+    shap_results_path = get_shap_results_path((dataset_folder, f"{data_name.removesuffix('.csv')}.pk1"))
+    if does_shap_results_exist((dataset_folder, results_file)):
+        print(f"Results for {data_name} already exists. Loading the results.")
+        shap_results = joblib.load(shap_results_path)
+    else:
+        print(f"Results for {data_name} does not exist. Calculating new results.")
+        explainer = create_explainer(X_subset, model)
+        X_test = create_DataFrame(X_test, feature_names)
+        shap_results = explainer(X_test)
+        shap_results.feature_names = feature_names
 
-    X_test = create_DataFrame(X_test, feature_names)
-    shap_results = explainer(X_test)
-    shap_results.feature_names = feature_names
+        joblib.dump(shap_results, shap_results_path)
 
     shap_values_dict = get_shap_scores(shap_results, class_options)
 
+    # show_shap_results(shap_results, feature_names, y_test, minority_class) # Uncomment for shap default graph
+    
     return shap_values_dict
 
 
     # TODO compare all models together? have in that weird box thing? sees smote vs gan
-    # TODO smaller background
 
-    
+def get_f1(model, testing_data):
+    X_test, y_test = testing_data
+    with torch.no_grad():
+        outputs = model(X_test)
+        _, predictions = torch.max(outputs, dim=1)
 
-    # show_shap_results(shap_results, feature_names, y_test, minority_class) # Uncomment for shap default graph
+    y_true = y_test.cpu().numpy()
+    y_prediction = predictions.cpu().numpy()
+
+    f1 = f1_score(y_true, y_prediction, average='macro')
+    return f1
