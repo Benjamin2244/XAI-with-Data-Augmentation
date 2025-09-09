@@ -1,1 +1,4 @@
 *.zip filter=lfs diff=lfs merge=lfs -text
+encoded_covtype.zip filter=lfs diff=lfs merge=lfs -text
+encoded_covtype_with_GAN.zip filter=lfs diff=lfs merge=lfs -text
+encoded_covtype_with_smote.zip filter=lfs diff=lfs merge=lfs -text
