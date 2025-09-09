@@ -2,10 +2,13 @@ from .utils import get_parent_directory, read_csv_file, file_exists, get_file_pa
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+# Splits the data into training and testing data
 def df_train_test_split(df, target_column, test_size=0.2):
     df_train, df_test = train_test_split(df, test_size=test_size, random_state=24, stratify=df[target_column])
     return df_train, df_test
 
+# Turns multiclass classification to binary classification
+# Minority class is '1', everything else is '0'
 def create_binary_classification(df, target_column, minority_class):
     current_classes = df[target_column].unique().tolist()
     if (current_classes == [0,1]) or (current_classes == [1,0]):
@@ -18,7 +21,8 @@ def create_binary_classification(df, target_column, minority_class):
     df[target_column] = df[target_column].astype(int)
     return df, 1
 
-# Convert categorical columns to category type
+# Converts 'Yes' and 'No' to '1' and '0'
+# Converts categorical columns to category types
 def convert_categorical_columns(df_imbalance, categorical_columns):
     df_imbalance = df_imbalance.replace({'Yes': 1, 'No': 0})
     df_imbalance = df_imbalance.infer_objects(copy=False)
@@ -32,6 +36,7 @@ def save_dataset(df, dataset_folder, dataset_new_file):
     df.to_csv(output_file, index=False)
     print(f"Dataset saved to {output_file}")
 
+# Save the test dataset
 def save_test_dataset(df, dataset_folder, dataset_new_file):
     parent_dir = get_parent_directory()
     output_file = parent_dir / 'data' / dataset_folder / dataset_new_file
@@ -52,11 +57,12 @@ def create_imbalance(df, target_column, minority_class, imbalance_ratio=0.1):
         class_data[class_type] = imbalanced_df[imbalanced_df[target_column] == class_type]
     new_minority_size = int(non_minority_class_size * imbalance_ratio)
 
-    # Randomly remove samples from the minority class to create imbalance
+    # Randomly remove samples from the minority class to create an imbalance
     if new_minority_size <= minority_size: 
         sampled_minority = class_data[minority_class].sample(n=new_minority_size, random_state=24)
         imbalanced_df = pd.concat([sampled_minority] + [class_data[c] for c in classes if c != minority_class])
-    # Randomly remove samples from the non-minority class to create imbalance
+        
+    # Randomly remove samples from the non-minority class to create an imbalance
     else: 
         new_non_minority_size = int(minority_size / imbalance_ratio)
         non_minority_data = pd.concat([class_data[c] for c in classes if c != minority_class])

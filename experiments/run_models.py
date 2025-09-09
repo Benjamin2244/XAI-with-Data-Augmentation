@@ -1,6 +1,7 @@
 from src.model import create_model, does_model_exist
 from src.utils import create_folder, get_model_folder_name, load_model, get_SMOTE_folder_name, get_GAN_folder_name
 
+# Trains a model or loads an existing version, and returning the trained model  
 def run_model(file_location, target_column, dataset_type, da_subfolder):
     dataset_folder, dataset_name = file_location
 
@@ -15,6 +16,7 @@ def run_model(file_location, target_column, dataset_type, da_subfolder):
         model = create_model(file_location, target_column, dataset_type, da_subfolder)
     return model
 
+# Calls 'run_model' for each dataset, and returning all of the trained models
 def run_models(file_locations, target_column):
     trained_models = []
     dataset_type = 'da'

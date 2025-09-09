@@ -112,8 +112,10 @@ if __name__ == "__main__":
         'categorical_columns': [],
         'balanced': False, # False = Ignores 'imbalance_ratios'
     }
-    # datasets = [heart_failure_data, personality_data, forest_cover_data]
-    datasets = [forest_cover_data]
+    datasets = [heart_failure_data, personality_data, forest_cover_data]
+    # datasets = [forest_cover_data]
+    # datasets = [heart_failure_data]
+    # datasets = [personality_data]
     # datasets = [heart_failure_data, personality_data]
 
     print("Starting experiments...")

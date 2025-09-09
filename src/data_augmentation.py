@@ -3,6 +3,7 @@ from imblearn.over_sampling import SMOTE
 from ctgan import CTGAN
 import pandas as pd
 
+# Apply smote to the dataset
 def apply_smote(df, target_column):
     smote = SMOTE(random_state=24)
 
@@ -17,6 +18,7 @@ def apply_smote(df, target_column):
     df_smote.insert(loc=target_column_index, column=target_column, value=y)
     return df_smote
 
+# Apply GAN to the dataset
 def apply_GAN(df, categorical_columns, num_required_rows):
     ctgan = CTGAN(epochs=10)
     ctgan.fit(df, categorical_columns)
@@ -29,9 +31,11 @@ def save_balanced_dataset(df, dataset_folder, data_augmentation_type, dataset_ne
     output_file = parent_dir / 'data' / dataset_folder / get_data_augmentation_folder_name() / data_augmentation_type / dataset_new_file
     df.to_csv(output_file, index=False)
 
+# Get the new file name for a SMOTE dataset
 def get_new_file_name_SMOTE(dataset_imbalanced_file_name):
     return dataset_imbalanced_file_name.replace(".csv", "_with_smote.csv")
 
+# Get the new file name for a GAN dataset
 def get_new_file_name_GAN(dataset_imbalanced_file_name):
     return dataset_imbalanced_file_name.replace(".csv", "_with_GAN.csv")
 

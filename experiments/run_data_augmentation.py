@@ -1,6 +1,7 @@
 from src.data_augmentation import create_data_augmentation_SMOTE, create_data_augmentation_GAN, get_new_file_name_SMOTE, get_new_file_name_GAN
 from src.utils import create_folder, create_da_folder, get_data_augmentation_folder_name, get_SMOTE_folder_name, get_GAN_folder_name,  get_file_path, file_exists
 
+# Running SMOTE for DA, returning the location of the new dataset
 def run_SMOTE(dataset_folder, dataset_name, target_column):
     new_file_name = get_new_file_name_SMOTE(dataset_name)
     new_file_path = get_file_path(dataset_folder, get_data_augmentation_folder_name(), get_SMOTE_folder_name(), new_file_name)
@@ -11,6 +12,7 @@ def run_SMOTE(dataset_folder, dataset_name, target_column):
         balanced_file_location = create_data_augmentation_SMOTE(dataset_folder, dataset_name, target_column)
     return balanced_file_location
 
+# Running GAN for DA, returning the location of the new dataset
 def run_GAN(dataset_folder, dataset_name, target_column, minority_class, categorical_columns):
     new_file_name = get_new_file_name_GAN(dataset_name)
     new_file_path = get_file_path(dataset_folder, get_data_augmentation_folder_name(), get_GAN_folder_name(), new_file_name)
@@ -21,7 +23,7 @@ def run_GAN(dataset_folder, dataset_name, target_column, minority_class, categor
         balanced_file_location = create_data_augmentation_GAN(dataset_folder, dataset_name, target_column, minority_class, categorical_columns)
     return balanced_file_location
 
-### Use data augmnentation to create balanced datasets
+### Running SMOTE and GAN for DA, on each dataset, returning the locations of the new datasets 
 def run_data_augmentation(imbalanced_file_locations, target_column, minority_class, categorical_columns):
     create_folder(imbalanced_file_locations[0][0], get_data_augmentation_folder_name())
     create_da_folder(imbalanced_file_locations[0][0], get_SMOTE_folder_name())

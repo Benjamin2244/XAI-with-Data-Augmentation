@@ -1,12 +1,12 @@
-from .utils import read_csv_file, print_progress_dot_optuna, get_model_folder_name, get_parent_directory, get_pre_data_augmentation_folder_name, force_csv_extension, force_pt_extension, load_model, split_data, load_dataset, get_num_features, get_num_classes, create_param_folder, print_progress_dot
+from .utils import print_progress_dot_optuna, get_model_folder_name, get_parent_directory, split_data, load_dataset, get_num_features, get_num_classes, create_param_folder, print_progress_dot
 from .evaluation import get_f1
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from sklearn.model_selection import train_test_split
 import optuna
 import functools
 
+# Neural Network
 class NeuralNetwork(nn.Module):
     def __init__(self, num_features, num_classes):
         super().__init__()
@@ -36,19 +36,23 @@ def objective(trial, X_train, y_train, X_test, y_test, num_features, num_classes
     f1 = get_f1(model, (X_test, y_test))
     return f1
 
+# Checks if the trial counter file exists
 def does_trial_count_exist(path):
     if path.exists():
         return True
     return False
 
+# Creates the trial counter file
 def create_trial_count(path):
     with open(path, "w") as file:
         file.write("0")
 
+# Gets the int from the trial counter file
 def get_trial_count(path):
     with open(path, "r") as file:
         return int(file.read().strip())
 
+# Update the trial counter file with a new int
 def update_trial_count(path, count):
     with open(path, "w") as file:
         file.write(str(count))
@@ -102,6 +106,7 @@ def hyperparameter_optimisation(X_train, y_train, X_test, y_test, num_features, 
 
     return study.best_params
 
+# Train the NN
 def train_model(X, y, num_features, num_classes, lr, batch_size, num_epochs):
     model = NeuralNetwork(num_features, num_classes)
     model.train()  # Set the model to training mode
@@ -133,6 +138,7 @@ def train_model(X, y, num_features, num_classes, lr, batch_size, num_epochs):
     model.eval()  # Set the model to evaluation mode
     return model
 
+# Checks if the model exists
 def does_model_exist(file_location):
     dataset_folder, dataset_name = file_location
     parent_dir = get_parent_directory()
@@ -141,12 +147,14 @@ def does_model_exist(file_location):
         return True
     return False
 
+# Saves the model
 def save_model(model, file_location):
     dataset_folder, dataset_name = file_location
     parent_dir = get_parent_directory()
     path = parent_dir / 'data' / dataset_folder / get_model_folder_name() / f"{dataset_name.removesuffix('.csv')}.pt"
     torch.save(model.state_dict(), path)
 
+# Creates the model
 def create_model(file_location, target_column, dataset_type, da_subfolder):
     df = load_dataset(file_location, dataset_type, da_subfolder) # Load dataset
     X_train, X_val, y_train, y_val = split_data(df, target_column) # Split data

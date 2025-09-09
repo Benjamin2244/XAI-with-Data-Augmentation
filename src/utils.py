@@ -1,12 +1,11 @@
 from pathlib import Path
 import pandas as pd
-import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 
+# Gives the file a '.pt' extension
 def force_pt_extension(file_name):
     if file_name.endswith('.pt'):
         return file_name
@@ -14,6 +13,7 @@ def force_pt_extension(file_name):
         file_name = file_name.rsplit('.', 1)[0]
     return file_name + '.pt'
 
+# Gives the file a '.csv' extension
 def force_csv_extension(file_name):
     if file_name.endswith('.csv'):
         return file_name
@@ -105,16 +105,19 @@ def delete_test_dataset(dataset_folder):
                 print(f"Deleting file: {file}")
                 file.unlink()
 
+# Checks if the file is the control dataset
 def is_control(name):
     if name.startswith("encoded_"):
         return True
     return False
 
+# Checks if the file is a SMOTE dataset 
 def is_SMOTE(name):
     if "_smote" in name:
         return True
     return False
 
+# Checks if the file is a GAN dataset
 def is_GAN(name):
     if "_GAN" in name:
         return True
@@ -163,7 +166,7 @@ def load_test_data(dataset_folder, target_column):
     testing_data = X_test, y_test
     return testing_data
 
-
+## Neural Network
 class NeuralNetwork(nn.Module):
     def __init__(self, num_features, num_classes):
         super().__init__()
@@ -178,6 +181,8 @@ class NeuralNetwork(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+# Prediction function for the Neural Network
+# Used by SHAP for evaluation
 def predict(model, x):
     model.eval()
     with torch.no_grad():
@@ -185,16 +190,11 @@ def predict(model, x):
             x = x.to_numpy()
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, dtype=torch.float32)
-        prediction = model(x)
+        logits = model(x)
+        probability = F.softmax(logits, dim=1)
+        return probability[:, 1].numpy()
 
-        if prediction.shape[1] == 1: # Checks if binary classification
-            positive_probability = torch.sigmoid(prediction)
-            probability = torch.cat([1 - positive_probability, positive_probability], dim=1)
-        else: 
-            probability = F.softmax(prediction, dim=1)
-
-        return prediction.numpy()
-
+# Splits the data into training and testing datasets
 def split_data(df, target_column, test_size=0.2):
     X = df.drop(columns=[target_column])
     y = df[target_column]
@@ -210,6 +210,7 @@ def split_data(df, target_column, test_size=0.2):
 
     return X_train, X_test, y_train, y_test
 
+# Loads the dataset
 def load_dataset(file_location, dataset_type, da_subfolder=None):
     dataset_folder, dataset_file_name = file_location
     dataset_file_name = force_csv_extension(dataset_file_name)
@@ -222,18 +223,21 @@ def load_dataset(file_location, dataset_type, da_subfolder=None):
     df = read_csv_file(*path)
     return df
 
+# Get the number of features in a dataset
 def get_num_features(file_location, target_column, dataset_type, da_subfolder):
     df = load_dataset(file_location, dataset_type, da_subfolder) # Load dataset
     X_train, X_val, y_train, y_val = split_data(df, target_column) # Split data
     num_features = X_train.shape[1] # Train a model on the dataset
     return num_features
 
+# Get the number of classes in a dataset
 def get_num_classes(file_location, target_column, dataset_type, da_subfolder):
     df = load_dataset(file_location, dataset_type, da_subfolder) # Load dataset
     X_train, X_val, y_train, y_val = split_data(df, target_column) # Split data
     num_classes = len(torch.unique(y_train))
     return num_classes
 
+# Load the saved model
 def load_model(file_location, target_column, dataset_type, da_subfolder):
     dataset_folder, dataset_name = file_location
     dataset_name = force_pt_extension(dataset_name)
@@ -248,6 +252,7 @@ def load_model(file_location, target_column, dataset_type, da_subfolder):
     model.eval()
     return model
 
+# Finds all the columns in a dataset that are binary or boolean
 def get_encoded_categorical_columns(dataset_folder, encoded_file_name):
     df = load_dataset((dataset_folder, encoded_file_name), 'pre')
     categorical_columns = []
@@ -274,23 +279,30 @@ def print_progress_dot():
 def print_progress_dot_optuna(study, trial):
     print_progress_dot()
 
+# Get the folder name for pre data augmentation
 def get_pre_data_augmentation_folder_name():
     return 'Pre Data Augmentation'
 
+# Get the folder name for data augmentation
 def get_data_augmentation_folder_name():
     return 'Data Augmentation'
 
+# Get the folder name for SMOTE
 def get_SMOTE_folder_name():
     return 'SMOTE'
 
+# Get the folder name for GAN
 def get_GAN_folder_name():
     return 'GAN'
 
+# Get the folder name for the models
 def get_model_folder_name():
     return 'Models'
 
+# Get the folder name for the parameter details
 def get_param_details_name():
     return 'Parameter Details'
 
+# Get the folder name for the results
 def get_results_folder_name():
     return 'Results'
